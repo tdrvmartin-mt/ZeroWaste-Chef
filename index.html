@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroWaste Chef</title>
+    <style>
+        /* ОСНОВЕН ДИЗАЙН */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #e6fffa 0%, #f0fdf4 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #2d3748; }
+        .app-container { background: white; width: 100%; max-width: 380px; height: 750px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .screen { display: none; flex: 1; padding: 30px 20px 90px 20px; overflow-y: auto; animation: fadeIn 0.4s; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ДОЛНО МЕНЮ */
+        .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #f0f4f8; display: flex; justify-content: space-around; padding: 12px 0 20px 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.03); z-index: 10; }
+        .nav-item { text-align: center; color: #a0aec0; cursor: pointer; font-size: 11px; font-weight: 600; transition: 0.3s; flex: 1; }
+        .nav-item.active { color: #71C89B; }
+        .nav-item span { font-size: 20px; display: block; margin-bottom: 4px; }
+
+        /* ОБЩИ ЕЛЕМЕНТИ */
+        .header { text-align: center; margin-bottom: 25px; }
+        .icon-main { background: #71C89B; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(113, 200, 155, 0.3); }
+        h1 { font-size: 22px; margin: 0; color: #1a202c; }
+        h2 { font-size: 20px; margin: 0 0 15px 0; }
+        p.subtitle { font-size: 14px; color: #718096; text-align: center; margin-top: 8px;}
+        .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 15px; margin-bottom: 20px; }
+        .recipe-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); position: relative;}
+        
+        input, textarea { width: 100%; box-sizing: border-box; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; font-family: inherit; font-size: 15px; outline: none; margin-bottom: 15px; color: #4a5568; background: white;}
+        textarea { resize: none; min-height: 90px; border: none; background: transparent; padding: 0;}
+        input:disabled { background: #f8fafc; color: #a0aec0; }
+        
+        button.primary-btn { background: #71C89B; color: white; border: none; width: 100%; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(113, 200, 155, 0.2); }
+        button.primary-btn:hover { background: #5ba880; }
+        button.primary-btn:disabled { background: #cbd5e0; cursor: not-allowed; box-shadow: none; }
+        button.secondary-btn { background: white; color: #71C89B; border: 2px solid #71C89B; width: 100%; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; margin-bottom: 20px; transition: 0.3s;}
+
+        /* МАКРОСИ И ТРАКЕРИ */
+        .macros { display: flex; justify-content: space-between; background: #f0fdf4; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
+        .macro-item { text-align: center; font-size: 12px; color: #718096; }
+        .macro-val { font-weight: bold; color: #71C89B; font-size: 14px; display: block;}
+        .impact-tracker-small { background: #ebf8ff; border-left: 4px solid #4299e1; padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 15px; color: #2b6cb0; }
+        
+        /* СЪРЦЕ ЗА ЗАПАЗВАНЕ */
+        .heart-icon { position: absolute; top: 20px; right: 20px; color: #ff4b4b; font-size: 22px; cursor: pointer; transition: transform 0.2s; user-select: none; z-index: 5;}
+        .heart-icon:active { transform: scale(1.3); }
+
+        /* DASHBOARD IMPACT */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .dash-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .dash-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+        .dash-val { font-size: 22px; font-weight: bold; color: #2d3748; display: block; margin-bottom: 5px;}
+        .dash-label { font-size: 12px; color: #718096; }
+        
+        .badges-container { display: flex; gap: 15px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 10px;}
+        .badge { min-width: 70px; text-align: center; opacity: 0.4; transition: 0.3s;}
+        .badge.unlocked { opacity: 1; }
+        .badge-circle { width: 60px; height: 60px; background: #f8fafc; border: 2px solid #cbd5e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 8px; transition: 0.3s;}
+        .badge.unlocked .badge-circle { border-color: #f6ad55; background: #fffaf0; }
+        .badge-title { font-size: 11px; font-weight: bold; color: #4a5568; }
+
+        /* МОДАЛИ И ИЗВЕСТИЯ */
+        .modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; animation: fadeIn 0.3s;}
+        .modal-content { background: white; width: 80%; padding: 30px 20px; border-radius: 20px; text-align: center; position: relative;}
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #a0aec0; cursor: pointer; border: none; background: none;}
+        .qr-image { width: 150px; height: 150px; margin: 20px auto; display: block; }
+        .toast { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: #2d3748; color: white; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: bold; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 50; }
+        .toast.show { opacity: 1; }
+        
+        /* ЛИНКОВЕ ВХОД/РЕГИСТРАЦИЯ/ЗАБРАВЕНА ПАРОЛА */
+        .auth-switch { text-align: center; font-size: 14px; color: #a0aec0; margin-top: 20px; }
+        .auth-switch span { color: #71C89B; cursor: pointer; font-weight: bold; }
+        .forgot-link { text-align: right; font-size: 13px; color: #a0aec0; margin-top: -5px; margin-bottom: 15px; }
+        .forgot-link span { cursor: pointer; transition: color 0.2s; }
+        .forgot-link span:hover { color: #71C89B; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <div id="screen-login" class="screen active" style="padding-top: 60px;">
+            <div class="header">
+                <div class="icon-main">👋</div>
+                <h1>Добре дошли отново!</h1>
+                <p class="subtitle">Влезте, за да продължите своето Zero-Waste приключение.</p>
+            </div>
+            
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <input type="email" id="logEmail" placeholder="Имейл адрес" required>
+                <input type="password" id="logPass" placeholder="Парола" required minlength="6">
+                <div class="forgot-link">
+                    <span onclick="switchAuthScreen('forgot')">Забравена парола?</span>
+                </div>
+                <button type="submit" class="primary-btn" id="logBtnBtn">Вход</button>
+            </form>
+            <div class="auth-switch">
+                Нямате профил? <span onclick="switchAuthScreen('register')">Регистрирайте се</span>
+            </div>
+        </div>
+
+        <div id="screen-register" class="screen" style="padding-top: 60px;">
+            <div class="header">
+                <div class="icon-main">🌱</div>
+                <h1>Създай профил</h1>
+                <p class="subtitle">Присъединете се към нас и спасете храната си.</p>
+            </div>
+            
+            <form id="registerForm" onsubmit="handleRegister(event)">
+                <input type="text" id="regName" placeholder="Вашето име" required minlength="2">
+                <input type="email" id="regEmail" placeholder="Имейл адрес" required>
+                <input type="password" id="regPass" placeholder="Парола (мин. 6 символа)" required minlength="6">
+                <button type="submit" class="primary-btn" style="margin-top: 10px;" id="regBtnBtn">Създай профил</button>
+            </form>
+            <div class="auth-switch">
+                Вече имате профил? <span onclick="switchAuthScreen('login')">Влезте тук</span>
+            </div>
+        </div>
+
+        <div id="screen-forgot" class="screen" style="padding-top: 60px;">
+            <div class="header">
+                <div class="icon-main" style="background: #f6ad55;">🔐</div>
+                <h1>Забравена парола?</h1>
+                <p class="subtitle" id="forgotSubtitle">Въведете вашия имейл, за да зададете нова парола.</p>
+            </div>
+            
+            <form id="forgotForm" onsubmit="handleForgot(event)">
+                <input type="email" id="forgotEmail" placeholder="Въведете вашия имейл" required>
+                
+                <div id="resetPasswordBlock" style="display: none; animation: fadeIn 0.4s;">
+                    <input type="password" id="newPass" placeholder="Нова парола (мин. 6 символа)" minlength="6">
+                </div>
+
+                <button type="submit" class="primary-btn" style="margin-top: 10px; background: #f6ad55;" id="forgotBtnBtn">Продължи</button>
+            </form>
+            <div class="auth-switch" id="forgotBackBtn">
+                <span onclick="switchAuthScreen('login')">⬅ Назад към Вход</span>
+            </div>
+        </div>
+
+        <div id="screen-home" class="screen">
+            <div class="header">
+                <div class="icon-main">👨‍🍳</div>
+                <h1>ZeroWaste Chef</h1>
+                <p class="subtitle">Въведете съставките си и открийте вкусни рецепти.</p>
+            </div>
+
+            <div class="card">
+                <label style="font-weight: bold; font-size: 14px; margin-bottom: 10px; display:block;">Какво има в хладилника ви?</label>
+                <textarea id="ingredients" placeholder="напр. яйца, сирене, домати, месо..."></textarea>
+            </div>
+            <button id="generateBtn" class="primary-btn" onclick="generateRecipe()">✨ Генерирай Рецепти</button>
+        </div>
+
+        <div id="screen-recipes" class="screen">
+            <h2>Вашите Рецепти</h2>
+            <p style="font-size: 14px; color: #718096; margin-top: -10px; margin-bottom: 20px;">Генерирани специално за вас</p>
+            
+            <div id="dynamic-recipe-container" style="display: none;">
+                <div class="recipe-card" id="current-generated-card" data-recipe-id="">
+                    <div class="heart-icon" onclick="toggleFavorite(this)">🤍</div>
+                    <div class="recipe-title" id="r-title">Зареждане...</div>
+                    <div class="recipe-meta" style="font-size: 13px; color: #718096; margin-bottom: 15px;">
+                        <span id="r-time">⏱️ -- mins</span> &nbsp;&nbsp; <span id="r-cals">🔥 -- cal</span>
+                    </div>
+                    <div class="macros">
+                        <div class="macro-item">Протеин<span class="macro-val" id="r-pro"></span></div>
+                        <div class="macro-item">Въглех.<span class="macro-val" id="r-carb"></span></div>
+                        <div class="macro-item">Мазнини<span class="macro-val" id="r-fat"></span></div>
+                    </div>
+                    <p style="font-size: 14px; color: #4a5568; line-height: 1.6;" id="r-steps"></p>
+                    <div class="impact-tracker-small" id="r-impact"></div>
+                </div>
+            </div>
+
+            <div id="empty-state" style="text-align: center; margin-top: 50px; color: #a0aec0;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🍳</div>
+                <p>Все още нямате генерирани рецепти.<br>Отидете в Начало, за да започнете.</p>
+            </div>
+        </div>
+
+        <div id="screen-impact" class="screen">
+            <div class="header" style="margin-bottom: 20px;">
+                <div class="icon-main" style="background: #4299e1;">🌍</div>
+                <h1 id="impact-greeting">Моят Напредък</h1>
+                <p class="subtitle">Статус: <strong style="color: #71C89B;" id="user-status">Новак в кухнята</strong></p>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="dash-card">
+                    <span class="dash-icon">💰</span>
+                    <span class="dash-val" id="total-money">0.00 лв.</span>
+                    <span class="dash-label">Спестени пари</span>
+                </div>
+                <div class="dash-card">
+                    <span class="dash-icon">🌱</span>
+                    <span class="dash-val" id="total-food">0.0 кг.</span>
+                    <span class="dash-label">Спасена храна</span>
+                </div>
+            </div>
+
+            <h3 style="font-size: 16px; margin-bottom: 15px;">Отключени Баджове</h3>
+            <div class="badges-container">
+                <div class="badge" id="badge-1">
+                    <div class="badge-circle">🍳</div>
+                    <div class="badge-title">Първа<br>Рецепта</div>
+                </div>
+                <div class="badge" id="badge-2">
+                    <div class="badge-circle">🍅</div>
+                    <div class="badge-title">Еко<br>Герой</div>
+                </div>
+                <div class="badge" id="badge-3">
+                    <div class="badge-circle">🔥</div>
+                    <div class="badge-title">Мастър<br>Шеф</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-profile" class="screen">
+            <div class="header" style="margin-bottom: 15px;">
+                <div class="icon-main" style="background: #ff4b4b;">❤️</div>
+                <h1>Любими Рецепти</h1>
+            </div>
+
+            <button class="secondary-btn" onclick="toggleQR(true)">🔗 Сподели приложението с приятел (QR)</button>
+            <button class="secondary-btn" style="color: #e53e3e; border-color: #e53e3e;" onclick="logoutApp()">🚪 Изход от профила</button>
+
+            <div id="favorites-container"></div>
+            <div id="empty-favorites" style="text-align: center; margin-top: 50px; color: #a0aec0;">
+                <div style="font-size: 40px; margin-bottom: 10px;">🤍</div>
+                <p>Нямате запазени рецепти.<br>Кликнете сърцето на генерирана рецепта.</p>
+            </div>
+        </div>
+
+        <div class="bottom-nav" id="bottom-nav" style="display: none;">
+            <div class="nav-item active" onclick="switchTab('home', this)"><span>🏠</span>Начало</div>
+            <div class="nav-item" onclick="switchTab('recipes', this)"><span>📖</span>Рецепти</div>
+            <div class="nav-item" onclick="switchTab('impact', this)"><span>🌍</span>Напредък</div>
+            <div class="nav-item" onclick="switchTab('profile', this)"><span>👤</span>Профил</div>
+        </div>
+
+        <div class="modal" id="qrModal">
+            <div class="modal-content">
+                <button class="close-modal" onclick="toggleQR(false)">×</button>
+                <h2 style="margin-top: 10px;">Сподели ZeroWaste</h2>
+                <p style="font-size: 14px; color: #718096;">Сканирай този код с камерата си.</p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://zerowaste-chef.com" alt="QR Code" class="qr-image">
+            </div>
+        </div>
+        <div class="toast" id="toastMsg">Рецептата е запазена! ❤️</div>
+
+    </div>
+
+    <script>
+        // --- СИСТЕМА ЗА БАЗА ДАННИ В БРАУЗЪРА (LOCAL STORAGE) ---
+        let usersDB = JSON.parse(localStorage.getItem('zeroWasteUsers')) || {};
+        let currentUserEmail = null; 
+        
+        // Променлива за следене на състоянието при възстановяване на парола
+        let isResettingPassword = false;
+
+        function saveDB() {
+            localStorage.setItem('zeroWasteUsers', JSON.stringify(usersDB));
+        }
+
+        function loadUserData() {
+            const data = usersDB[currentUserEmail];
+            
+            document.getElementById('impact-greeting').innerText = `Здравей, ${data.name}!`;
+            document.getElementById('total-food').innerText = data.kg.toFixed(1) + " кг.";
+            document.getElementById('total-money').innerText = data.lv.toFixed(2) + " лв.";
+            
+            if(data.count > 0) document.getElementById('user-status').innerText = "Любител Готвач";
+            if(data.count >= 2) document.getElementById('user-status').innerText = "Zero-Waste Hero";
+
+            if(data.count >= 1) document.getElementById('badge-1').classList.add('unlocked');
+            else document.getElementById('badge-1').classList.remove('unlocked');
+            if(data.count >= 2) document.getElementById('badge-2').classList.add('unlocked');
+            else document.getElementById('badge-2').classList.remove('unlocked');
+            if(data.count >= 4) document.getElementById('badge-3').classList.add('unlocked');
+            else document.getElementById('badge-3').classList.remove('unlocked');
+
+            const favContainer = document.getElementById('favorites-container');
+            const emptyFav = document.getElementById('empty-favorites');
+            
+            if(data.favoritesHTML && data.favoritesHTML.trim() !== "") {
+                favContainer.innerHTML = data.favoritesHTML;
+                emptyFav.style.display = 'none';
+            } else {
+                favContainer.innerHTML = "";
+                emptyFav.style.display = 'block';
+            }
+        }
+
+        // --- 1. АВТЕНТИКАЦИЯ ---
+        function switchAuthScreen(screen) {
+            document.getElementById('screen-login').classList.remove('active');
+            document.getElementById('screen-register').classList.remove('active');
+            document.getElementById('screen-forgot').classList.remove('active');
+            document.getElementById(`screen-${screen}`).classList.add('active');
+            
+            // Ако се върнем назад, зануляваме състоянието на забравената парола
+            if (screen !== 'forgot') {
+                resetForgotScreenState();
+            }
+        }
+
+        // РЕГИСТРАЦИЯ
+        function handleRegister(event) {
+            event.preventDefault(); 
+            const btn = document.getElementById('regBtnBtn');
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('regPass').value; 
+
+            if (usersDB[email]) {
+                alert("Този имейл вече е регистриран! Моля, влезте в профила си.");
+                switchAuthScreen('login');
+                document.getElementById('logEmail').value = email; 
+                return;
+            }
+
+            btn.innerHTML = "⏳ Създаване...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                usersDB[email] = { name: name, pass: pass, kg: 0.0, lv: 0.0, count: 0, favoritesHTML: "" };
+                saveDB();
+                
+                currentUserEmail = email;
+                loadUserData();
+
+                document.getElementById('screen-register').classList.remove('active');
+                document.getElementById('screen-home').classList.add('active');
+                document.getElementById('bottom-nav').style.display = 'flex';
+                
+                btn.innerHTML = "Създай профил";
+                btn.disabled = false;
+            }, 800);
+        }
+
+        // ВХОД
+        function handleLogin(event) {
+            event.preventDefault(); 
+            const btn = document.getElementById('logBtnBtn');
+            const email = document.getElementById('logEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('logPass').value; 
+
+            if (!usersDB[email]) {
+                alert("Не намерихме профил с този имейл. Моля, регистрирайте се първо.");
+                switchAuthScreen('register');
+                document.getElementById('regEmail').value = email; 
+                return;
+            }
+
+            if (usersDB[email].pass !== pass) {
+                alert("Грешна парола! Моля, опитайте отново.");
+                return; 
+            }
+
+            btn.innerHTML = "⏳ Влизане...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                currentUserEmail = email;
+                loadUserData();
+
+                document.getElementById('screen-login').classList.remove('active');
+                document.getElementById('screen-home').classList.add('active');
+                document.getElementById('bottom-nav').style.display = 'flex';
+                
+                btn.innerHTML = "Вход";
+                btn.disabled = false;
+            }, 800);
+        }
+
+        // РЕАЛНА СМЯНА НА ПАРОЛА
+        function handleForgot(event) {
+            event.preventDefault();
+            const btn = document.getElementById('forgotBtnBtn');
+            const emailInput = document.getElementById('forgotEmail');
+            const email = emailInput.value.trim().toLowerCase();
+            const newPassInput = document.getElementById('newPass');
+            const resetBlock = document.getElementById('resetPasswordBlock');
+
+            // СТЪПКА 1: Проверяваме имейла
+            if (!isResettingPassword) {
+                btn.innerHTML = "⏳ Проверка...";
+                btn.disabled = true;
+
+                setTimeout(() => {
+                    if (usersDB[email]) {
+                        // Имейлът е намерен! Отключваме полето за нова парола
+                        document.getElementById('forgotSubtitle').innerText = "Въведете вашата нова парола.";
+                        emailInput.disabled = true; // Заключваме имейла, за да не го променят
+                        resetBlock.style.display = 'block';
+                        newPassInput.required = true;
+                        
+                        btn.innerHTML = "Запази нова парола";
+                        isResettingPassword = true;
+                    } else {
+                        alert("Не намерихме профил с този имейл. Моля, проверете за правописни грешки.");
+                    }
+                    btn.disabled = false;
+                }, 800);
+            } 
+            // СТЪПКА 2: Запазваме новата парола
+            else {
+                btn.innerHTML = "⏳ Запазване...";
+                btn.disabled = true;
+
+                setTimeout(() => {
+                    // Презаписваме паролата в базата данни
+                    usersDB[email].pass = newPassInput.value;
+                    saveDB();
+
+                    alert("✅ Паролата е успешно променена! Вече можете да влезете.");
+                    
+                    // Почистваме екрана и пращаме към Вход
+                    resetForgotScreenState();
+                    switchAuthScreen('login');
+                    document.getElementById('logEmail').value = email; // попълваме им имейла автоматично
+                    
+                    btn.disabled = false;
+                }, 800);
+            }
+        }
+
+        function resetForgotScreenState() {
+            isResettingPassword = false;
+            document.getElementById('forgotSubtitle').innerText = "Въведете вашия имейл и ние ще ви изпратим линк за възстановяване.";
+            document.getElementById('forgotEmail').disabled = false;
+            document.getElementById('forgotEmail').value = '';
+            document.getElementById('resetPasswordBlock').style.display = 'none';
+            document.getElementById('newPass').required = false;
+            document.getElementById('newPass').value = '';
+            document.getElementById('forgotBtnBtn').innerHTML = "Продължи";
+        }
+
+        // ИЗХОД
+        function logoutApp() {
+            currentUserEmail = null; 
+            
+            document.getElementById('registerForm').reset();
+            document.getElementById('loginForm').reset();
+            resetForgotScreenState();
+            document.getElementById('ingredients').value = '';
+
+            document.getElementById('dynamic-recipe-container').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
+
+            document.getElementById('bottom-nav').style.display = 'none';
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            document.getElementById('screen-login').classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.nav-item')[0].classList.add('active');
+        }
+
+        // --- 2. НАВИГАЦИЯ ---
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                if(screen.id !== 'screen-login' && screen.id !== 'screen-register' && screen.id !== 'screen-forgot') screen.classList.remove('active');
+            });
+            document.getElementById('screen-' + tabName).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            element.classList.add('active');
+        }
+        function toggleQR(show) { document.getElementById('qrModal').style.display = show ? 'flex' : 'none'; }
+
+        // --- 3. ЗАПАЗВАНЕ И ПРЕМАХВАНЕ (ЛЮБИМИ) ---
+        function toggleFavorite(element) {
+            const toast = document.getElementById('toastMsg');
+            const favoritesContainer = document.getElementById('favorites-container');
+            const emptyFavorites = document.getElementById('empty-favorites');
+            const card = element.closest('.recipe-card');
+            const recipeId = card.getAttribute('data-recipe-id');
+            
+            if(element.innerText === '🤍') {
+                element.innerText = '❤️';
+                toast.innerText = "Рецептата е запазена! ❤️";
+                
+                const clone = card.cloneNode(true);
+                clone.id = 'fav-' + recipeId; 
+                clone.querySelector('.heart-icon').innerText = '❤️'; 
+                
+                favoritesContainer.prepend(clone);
+                emptyFavorites.style.display = 'none';
+            } else {
+                element.innerText = '🤍';
+                toast.innerText = "Рецептата е премахната!";
+                
+                if(!card.id.startsWith('fav-')) {
+                    const favCard = document.getElementById('fav-' + recipeId);
+                    if(favCard) favCard.remove();
+                } else {
+                    card.remove();
+                    const mainCard = document.getElementById('current-generated-card');
+                    if(mainCard && mainCard.getAttribute('data-recipe-id') === recipeId) {
+                        mainCard.querySelector('.heart-icon').innerText = '🤍';
+                    }
+                }
+
+                if(favoritesContainer.children.length === 0) emptyFavorites.style.display = 'block';
+            }
+            
+            usersDB[currentUserEmail].favoritesHTML = favoritesContainer.innerHTML;
+            saveDB();
+
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        }
+
+        // --- 4. AI БАЗА ДАННИ С РЕЦЕПТИ ---
+        const recipesDB = [
+            { tags: ['яйц', 'сирен', 'кашкавал', 'домат', 'чушк'], title: "Омлет 'Спаси Закуската'", time: "15 mins", cals: "320 cal", pro: "22g", carb: "5g", fat: "18g", savedKg: "0.3", savedLv: "4.50", steps: "1. Разбий яйцата в купа с щипка сол.<br>2. Нарежи зеленчуците и млечните продукти.<br>3. Изсипи яйцата в намазнен тиган и готви под капак за 5 минути." },
+            { tags: ['брашн', 'мляк', 'яйц', 'захар', 'банан', 'ябълк'], title: "Спасителни Палачинки", time: "20 mins", cals: "380 cal", pro: "10g", carb: "55g", fat: "12g", savedKg: "0.4", savedLv: "3.20", steps: "1. Смеси сухите съставки.<br>2. Добави яйцето и млякото. Ако имаш плодове, намачкай ги вътре.<br>3. Печи малки палачинки в тиган.<br>4. Сервирай с мед или сладко!" },
+            { tags: ['кайм', 'картоф', 'домат', 'лук'], title: "Домашна Запеканка", time: "60 mins", cals: "450 cal", pro: "20g", carb: "45g", fat: "22g", savedKg: "0.9", savedLv: "9.00", steps: "1. Задуши лука и каймата.<br>2. Обели и нарежи картофите.<br>3. Смеси всичко в тава, добави доматите и подправки.<br>4. Печи на 200°C около 45 минути." },
+            { tags: ['паста', 'макарон', 'спагет', 'домат', 'сметан', 'босилек'], title: "Паста от остатъци", time: "20 mins", cals: "410 cal", pro: "15g", carb: "55g", fat: "12g", savedKg: "0.4", savedLv: "6.00", steps: "1. Свари пастата.<br>2. Задуши останалите съставки за сос.<br>3. Смеси пастата със соса и сервирай." },
+            { tags: ['ориз', 'пиле', 'гъби', 'грах', 'царевиц'], title: "Пържен ориз", time: "25 mins", cals: "380 cal", pro: "12g", carb: "60g", fat: "8g", savedKg: "0.5", savedLv: "5.50", steps: "1. Свари ориза.<br>2. Запържи зеленчуците и месото на силен огън.<br>3. Добави ориза и соев сос, бъркай енергично." },
+            { tags: ['краставиц', 'домат', 'марул', 'айсберг', 'салат', 'маслин'], title: "Свежа салата 'Изчисти хладилника'", time: "10 mins", cals: "180 cal", pro: "6g", carb: "12g", fat: "14g", savedKg: "0.5", savedLv: "3.80", steps: "1. Нарежи всички пресни зеленчуци в голяма купа.<br>2. Добави сирене, яйца или ядки.<br>3. Овкуси със зехтин и лимон." }
+        ];
+        const fallbackRecipe = { title: "Креативен 'Zero-Waste' Боул", time: "20 mins", cals: "360 cal", pro: "14g", carb: "30g", fat: "15g", savedKg: "0.4", savedLv: "6.50", steps: "1. Подготви и нарежи всичко.<br>2. Загрей мазнина в тиган.<br>3. Сотирай първо твърдите, после меките съставки.<br>4. Овкуси и сервирай!" };
+
+        // --- 5. ГЕНЕРИРАНЕ ---
+        function generateRecipe() {
+            const rawInput = document.getElementById('ingredients').value;
+            const inputWords = rawInput.toLowerCase().replace(/[,.!]/g, ' ').split(/\s+/);
+            const btn = document.getElementById('generateBtn');
+            
+            if(rawInput.trim() === '') { alert("Моля, първо въведете продукти!"); return; }
+
+            btn.innerHTML = "⏳ AI генерира...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                let bestMatch = fallbackRecipe;
+                let maxScore = 0;
+                recipesDB.forEach(recipe => {
+                    let score = 0;
+                    recipe.tags.forEach(tag => {
+                        inputWords.forEach(word => { if (word.includes(tag)) score++; });
+                    });
+                    if (score > maxScore) { maxScore = score; bestMatch = recipe; }
+                });
+
+                const newRecipeId = 'recipe-' + Date.now();
+                const currentCard = document.getElementById('current-generated-card');
+                currentCard.setAttribute('data-recipe-id', newRecipeId);
+
+                document.getElementById('r-title').innerText = bestMatch.title;
+                document.getElementById('r-time').innerText = `⏱️ ${bestMatch.time}`;
+                document.getElementById('r-cals').innerText = `🔥 ${bestMatch.cals}`;
+                document.getElementById('r-pro').innerText = bestMatch.pro;
+                document.getElementById('r-carb').innerText = bestMatch.carb;
+                document.getElementById('r-fat').innerText = bestMatch.fat;
+                
+                document.getElementById('r-steps').innerHTML = `
+                    <div style="margin-bottom:10px; font-size:13px; color:#71C89B; background:#e6fffa; padding:8px; border-radius:6px;">
+                        ✨ <strong>Продукти:</strong> ${rawInput}
+                    </div>
+                    <strong>Начин на приготвяне:</strong><br>${bestMatch.steps}
+                `;
+                
+                document.getElementById('r-impact').innerHTML = `<strong>🌱 Еко Тракер:</strong><br>Спаси около <strong>${bestMatch.savedKg} кг</strong> храна и спести <strong>~${bestMatch.savedLv} лв.</strong>!`;
+
+                currentCard.querySelector('.heart-icon').innerText = '🤍';
+                
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('dynamic-recipe-container').style.display = 'block';
+
+                usersDB[currentUserEmail].kg += parseFloat(bestMatch.savedKg);
+                usersDB[currentUserEmail].lv += parseFloat(bestMatch.savedLv);
+                usersDB[currentUserEmail].count++;
+                saveDB();
+                loadUserData(); 
+
+                btn.innerHTML = "✨ Генерирай Рецепти";
+                btn.disabled = false;
+                
+                const recipesTabBtn = document.querySelectorAll('.nav-item')[1];
+                switchTab('recipes', recipesTabBtn);
+
+            }, 2000); 
+        }
+    </script>
+</body>
+</html>
